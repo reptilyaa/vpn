@@ -11,6 +11,9 @@ def main_menu():
             )
         ],
         [
+            InlineKeyboardButton(text="⚡ Получить VPN", callback_data="get_vpn")
+        ],
+        [
             InlineKeyboardButton(text="🛠 Поддержка", url=SUPPORT_URL),
             InlineKeyboardButton(text="📢 Канал", url=CHANNEL_URL)
         ],
