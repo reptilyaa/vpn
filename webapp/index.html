@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>AGPN</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(180deg, #0f172a, #020617);
+            color: white;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        .button {
+            display: block;
+            padding: 14px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .primary {
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+        }
+
+        .secondary {
+            background: #1e293b;
+        }
+
+        .button:hover {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+
+        .status {
+            color: #22c55e;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <h1>🚀 AGPN</h1>
+    <div class="subtitle">Быстое и безопасное ускорение интернетаN</div>
+
+    <!-- СТАТУС -->
+    <div class="card">
+        <h3>Статус</h3>
+        <p class="status">Не подключен</p>
+    </div>
+
+    <!-- КУПИТЬ -->
+    <div class="card">
+        <h3>Доступ</h3>
+        <p>Ускорь интернет за 30 секунд</p>
+        <div class="button primary" onclick="buyVPN()">Купить доступ</div>
+    </div>
+
+    <!-- МОИ ПОДКЛЮЧЕНИЯ -->
+    <div class="card">
+        <h3>Мои конфиги</h3>
+        <p>Управление устройствами</p>
+        <div class="button secondary" onclick="myConfigs()">Открыть</div>
+    </div>
+
+    <!-- О СЕРВИСЕ -->
+    <div class="card">
+        <h3>О сервисе</h3>
+        <p>
+            AGPN — современный ускоритель интернета с высокой скоростью,
+            стабильными серверами и удобной системой подключения.
+        </p>
+    </div>
+
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+
+    tg.expand(); // раскрывает на весь экран
+
+    function buyVPN() {
+        alert("Покупка скоро будет подключена 💳");
+
+        // 👉 в будущем:
+        // tg.sendData("buy_vpn");
+    }
+
+    function myConfigs() {
+        alert("Тут будут твои конфиги ⚙️");
+
+        // 👉 в будущем:
+        // tg.sendData("get_configs");
+    }
+</script>
+
+</body>
+</html>
