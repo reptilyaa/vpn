@@ -4,16 +4,16 @@ from aiogram.types import BufferedInputFile
 
 from vpn.wg_manager import generate_config
 from keyboards import main_menu, info_menu
-
-# если у тебя уже есть db.py (триал система)
+from keyboards import main_menu, info_menu, admin_menu
 from db import create_user, is_active
+ADMIN_ID = 1027906192
 
 router = Router()
 
 WELCOME_TEXT = """
 👋 Добро пожаловать в AGPN
 
-🔒 Современный ускоритель интернета
+🔒 Современный VPN сервис
 ⚡ Быстрая выдача конфигов
 🌍 Стабильное соединение
 
@@ -21,48 +21,21 @@ WELCOME_TEXT = """
 """
 
 INFO_TEXTS = {
-    "info_console": """💻 Ускоритель интернета на консоль
-
-🎮 Роутер с ускорением для PS5
-
-❌ Раздача интернета с ускорением с телефона не работает
-
-🚀 Решение — отдельный роутер с ускорением
-📡 Keenetic или аналог
-⚙️ Настройка через LAN
-""",
-
-    "info_server": """🖥 Свой сервер (VPS)
-
-🌍 Твой личный VPN сервер
-
-⚡ Плюсы:
-• стабильность
-• высокая скорость
-• нет блокировок
-
-☁️ VPS любой (TimeWeb и т.д.)
-""",
-
-    "info_whitelist": """🤍 Белые списки и Xray
-
-🚀 Маскировка трафика
-
-❌ Сервисы блокируют VPN
-✔ Xray обходит блокировки
-
-👉 интернет работает даже при ограничениях
-"""
+    "info_console": "💻 Консоль / PS5 VPN инструкция",
+    "info_server": "🖥 VPS сервер VPN",
+    "info_whitelist": "🤍 Обход блокировок через Xray"
 }
 
 
 # ---------------- START ----------------
 @router.message(Command("start"))
 async def start(msg: types.Message):
-    # создаём пользователя и триал 7 дней
     create_user(msg.from_user.id)
 
-    await msg.answer(WELCOME_TEXT, reply_markup=main_menu())
+    await msg.answer(
+        WELCOME_TEXT,
+        reply_markup=main_menu()
+    )
 
 
 # ---------------- MENU ----------------
@@ -72,7 +45,7 @@ async def agpn(msg: types.Message):
 
 
 # ---------------- INFO ----------------
-@router.callback_query(lambda c: c.data == "info")
+@router.callback_query(F.data == "info")
 async def info(callback: types.CallbackQuery):
     await callback.message.edit_text(
         "ℹ️ Информация:",
@@ -81,17 +54,19 @@ async def info(callback: types.CallbackQuery):
     await callback.answer()
 
 
-@router.callback_query(lambda c: c.data in ["info_console", "info_server", "info_whitelist"])
+@router.callback_query(F.data.in_(["info_console", "info_server", "info_whitelist"]))
 async def info_switch(callback: types.CallbackQuery):
-    text = INFO_TEXTS.get(callback.data)
+    text = INFO_TEXTS.get(callback.data, "Нет данных")
 
-    if text:
-        await callback.message.edit_text(text, reply_markup=info_menu())
+    await callback.message.edit_text(
+        text,
+        reply_markup=info_menu()
+    )
 
     await callback.answer()
 
 
-@router.callback_query(lambda c: c.data == "back_main")
+@router.callback_query(F.data == "back_main")
 async def back(callback: types.CallbackQuery):
     await callback.message.edit_text(
         "📱 Главное меню:",
@@ -100,32 +75,48 @@ async def back(callback: types.CallbackQuery):
     await callback.answer()
 
 
-# ---------------- VPN GENERATION ----------------
+# ---------------- VPN ----------------
 @router.callback_query(F.data == "get_vpn")
 async def get_vpn(callback: types.CallbackQuery):
     user_id = callback.from_user.id
 
-    # 🔐 проверка триала
-    if not is_active(user_id):
-        await callback.message.answer("❌ Триал закончился или доступ закрыт")
-        await callback.answer()
-        return
-
     try:
-        # 🔑 генерация VPN конфига
+        # 🔐 проверка триала
+        if not is_active(user_id):
+            await callback.message.answer("⛔ Ваш триал истёк")
+            return
+
+        # ⚡ получаем конфиг через VPS API
         config = generate_config(user_id)
 
-        file = BufferedInputFile(
-            config.encode(),
-            filename="vpn.conf"
-        )
-
         await callback.message.answer_document(
-            document=file,
+            BufferedInputFile(
+                config.encode(),
+                filename="vpn.conf"
+            ),
             caption="⚡ Ваш VPN конфиг готов"
         )
 
     except Exception as e:
-        await callback.message.answer(f"❌ Ошибка генерации VPN:\n{e}")
+        await callback.message.answer(f"❌ Ошибка VPN:\n{e}")
 
+    await callback.answer()
+
+    @router.callback_query(F.data == "support")
+    async def support(callback: types.CallbackQuery):
+        await callback.message.answer(
+            "🧑‍💻 Поддержка:\n\nПиши сюда: @your_support"
+        )
+        await callback.answer()
+
+@router.callback_query(F.data == "admin_panel")
+async def admin_panel(callback: types.CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("⛔ Нет доступа", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        "🧠 Админ панель",
+        reply_markup=admin_menu()
+    )
     await callback.answer()

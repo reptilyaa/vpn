@@ -19,6 +19,9 @@ def main_menu():
         ],
         [
             InlineKeyboardButton(text="ℹ️ Информация", callback_data="info")
+        ],
+        [
+            InlineKeyboardButton(text="🧠 Админ панель", callback_data="admin_panel")
         ]
     ])
 
@@ -36,5 +39,21 @@ def info_menu():
         ],
         [
             InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")
+        ]
+    ])
+
+
+# ---------------- ADMIN MENU ----------------
+
+def admin_menu():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="📊 Пользователи", callback_data="admin_users")
+        ],
+        [
+            InlineKeyboardButton(text="⛔ Обновить список", callback_data="admin_panel")
+        ],
+        [
+            InlineKeyboardButton(text="⬅️ В главное меню", callback_data="back_main")
         ]
     ])

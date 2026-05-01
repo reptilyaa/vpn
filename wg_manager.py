@@ -1,37 +1,42 @@
-from vpn.ssh_client import run_ssh
-import subprocess
-import random
+import requests
+
+API_URL = "http://194.87.115.67:5000/generate"
 
 
-SERVER_PUBLIC_KEY = "E3xko3P5bs51CJ4jRND+DPmlst1wCngeweSy0aFIJnM="
-SERVER_IP = "194.87.115.67"  # твой IP
+def generate_config(user_id: int) -> str:
+    """
+    Получает VPN конфиг с VPS API
+    """
 
+    try:
+        response = requests.post(
+            API_URL,
+            json={"user_id": user_id},
+            timeout=15
+        )
 
-def generate_keys():
-    private = subprocess.check_output("wg genkey", shell=True).decode().strip()
-    public = subprocess.check_output(f"echo {private} | wg pubkey", shell=True).decode().strip()
-    return private, public
+        # если сервер упал / 500 / 404
+        response.raise_for_status()
 
+        data = response.json()
 
-def generate_config(user_id):
-    ip = f"10.0.0.{random.randint(2, 200)}"
+        # защита от кривого ответа
+        if "config" not in data:
+            raise Exception(f"Bad API response: {data}")
 
-    private, public = generate_keys()
+        config = data["config"]
 
-    # 👉 добавляем peer на VPS
-    run_ssh(f"wg set wg0 peer {public} allowed-ips {ip}/32")
+        # финальная защита от пустого ответа
+        if not config or len(config) < 50:
+            raise Exception("Empty or invalid VPN config received")
 
-    config = f"""
-[Interface]
-PrivateKey = {private}
-Address = {ip}/32
-DNS = 1.1.1.1
+        return config
 
-[Peer]
-PublicKey = {SERVER_PUBLIC_KEY}
-Endpoint = {SERVER_IP}:51820
-AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 25
-"""
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Request error: {e}")
 
-    return config
+    except ValueError:
+        raise Exception(f"Invalid JSON from API: {response.text}")
+
+    except Exception as e:
+        raise Exception(f"VPN API error: {e}")
