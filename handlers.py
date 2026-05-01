@@ -3,9 +3,8 @@ from aiogram.filters import Command
 from aiogram.types import BufferedInputFile
 
 from vpn.wg_manager import generate_config
-from keyboards import main_menu, info_menu
 from keyboards import main_menu, info_menu, admin_menu
-from db import create_user, is_active
+from vpn.db import create_user, is_active
 ADMIN_ID = 1027906192
 
 router = Router()

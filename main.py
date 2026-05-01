@@ -1,4 +1,4 @@
-from db import init_db
+from vpn.db import init_db
 init_db()
 import asyncio
 from aiogram import Bot, Dispatcher
