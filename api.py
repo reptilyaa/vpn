@@ -3,7 +3,7 @@ import subprocess
 
 app = Flask(__name__)
 
-API_KEY = "secret123"
+API_KEY = "337a076c50f7017bfc523e549b43b0db33e779e3e64c1a311b9c5b30644c9cbe"
 
 
 def check_key(req):
