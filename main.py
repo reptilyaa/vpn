@@ -1,24 +1,34 @@
-from vpn.db import init_db
-init_db()
 import asyncio
+import logging
+
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
 
 from config import BOT_TOKEN
 from handlers import router
+from db import init_db
 
 
 async def main():
-    bot = Bot(BOT_TOKEN)
+    logging.basicConfig(level=logging.INFO)
+
+    # 🔹 создаём БД
+    init_db()
+
+    # 🔹 бот
+    bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
 
+    # 🔹 роутеры
     dp.include_router(router)
 
-    # ✅ добавили команды в меню Telegram
+    # 🔹 команды
     await bot.set_my_commands([
-        BotCommand(command="start", description="Запуск бота"),
-        BotCommand(command="agpn", description="Открыть меню"),
+        BotCommand(command="start", description="Запуск"),
+        BotCommand(command="agpn", description="Меню"),
     ])
+
+    print("✅ Бот запущен")
 
     await dp.start_polling(bot)
 
