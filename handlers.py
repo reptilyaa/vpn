@@ -187,8 +187,14 @@ async def ban_user(msg: types.Message):
     if msg.from_user.id != ADMIN_ID:
         return
 
+    parts = msg.text.split()
+
+    if len(parts) < 2:
+        await msg.answer("Используй: /ban user_id")
+        return
+
     try:
-        user_id = int(msg.text.split()[1])
+        user_id = int(parts[1])
 
         configs = get_user_configs(user_id)
 
@@ -213,5 +219,5 @@ async def ban_user(msg: types.Message):
             f"Удалено конфигов: {deleted}"
         )
 
-    except:
-        await msg.answer("Используй: /ban user_id")
+    except ValueError:
+        await msg.answer("❌ user_id должен быть числом")
