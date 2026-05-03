@@ -193,31 +193,36 @@ async def ban_user(msg: types.Message):
         await msg.answer("Используй: /ban user_id")
         return
 
-    try:
-        user_id = int(parts[1])
+    raw_id = parts[1]
 
-        configs = get_user_configs(user_id)
+    # 🔥 вытаскиваем только цифры
+    match = re.search(r"\d+", raw_id)
 
-        if not configs:
-            await msg.answer("❌ У пользователя нет активных конфигов")
+    if not match:
+        await msg.answer("❌ user_id должен содержать числа")
+        return
+
+    user_id = int(match.group())
+
+    configs = get_user_configs(user_id)
+
+    if not configs:
+        await msg.answer("❌ У пользователя нет активных конфигов")
+        return
+
+    deleted = 0
+
+    for (public_key,) in configs:
+        try:
+            delete_peer(public_key)
+            deleted += 1
+        except Exception as e:
+            await msg.answer(f"Ошибка удаления:\n{e}")
             return
 
-        deleted = 0
+    deactivate_user(user_id)
 
-        for (public_key,) in configs:
-            try:
-                delete_peer(public_key)
-                deleted += 1
-            except Exception as e:
-                await msg.answer(f"Ошибка удаления:\n{e}")
-                return
-
-        deactivate_user(user_id)
-
-        await msg.answer(
-            f"⛔ Пользователь {user_id} отключён\n"
-            f"Удалено конфигов: {deleted}"
-        )
-
-    except ValueError:
-        await msg.answer("❌ user_id должен быть числом")
+    await msg.answer(
+        f"⛔ Пользователь {user_id} отключён\n"
+        f"Удалено конфигов: {deleted}"
+    )
