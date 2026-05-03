@@ -1,29 +1,43 @@
 from flask import Flask, request, jsonify
 import subprocess
+import threading
 
 app = Flask(__name__)
 
 API_KEY = "337a076c50f7017bfc523e549b43b0db33e779e3e64c1a311b9c5b30644c9cbe"
 
 WG_CONF = "/etc/wireguard/wg0.conf"
+IP_POOL_FILE = "/root/ip_pool"
 SERVER_PUBLIC_KEY = open("/root/server_public.key").read().strip()
 ENDPOINT = "194.87.115.67:51820"
+
+lock = threading.Lock()
 
 
 def check_key(req):
     return req.headers.get("X-API-KEY") == API_KEY
 
 
-def get_next_ip():
-    base = "10.0.0."
-    with open(WG_CONF, "r") as f:
-        content = f.read()
+def run(cmd):
+    return subprocess.check_output(cmd).decode().strip()
 
-    for i in range(2, 255):
-        ip = f"{base}{i}"
-        if ip not in content:
+
+def get_next_ip():
+    with open(IP_POOL_FILE, "r") as f:
+        pool = [x.strip() for x in f.readlines() if x.strip()]
+
+    with open(WG_CONF, "r") as f:
+        used = f.read()
+
+    for ip in pool:
+        if ip not in used:
             return ip
     return None
+
+
+def sync_wg():
+    subprocess.run(["wg-quick", "down", "wg0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["wg-quick", "up", "wg0"], check=True)
 
 
 # ---------------- GENERATE ----------------
@@ -38,33 +52,40 @@ def generate():
     if not user_id:
         return jsonify({"error": "no user_id"}), 400
 
-    try:
-        # генерим ключи
-        private = subprocess.check_output("wg genkey", shell=True).decode().strip()
-        public = subprocess.check_output(
-            f"echo {private} | wg pubkey", shell=True
-        ).decode().strip()
+    with lock:
+        try:
+            private = run(["wg", "genkey"])
+            public = subprocess.check_output(
+                ["wg", "pubkey"],
+                input=private.encode()
+            ).decode().strip()
 
-        ip = get_next_ip()
+            ip = get_next_ip()
+            if not ip:
+                return jsonify({"error": "no free ip"}), 500
 
-        if not ip:
-            return jsonify({"error": "no free ip"}), 500
+            # runtime add
+            subprocess.run([
+                "wg", "set", "wg0",
+                "peer", public,
+                "allowed-ips", f"{ip}/32"
+            ], check=True)
 
-        # добавляем peer в WG
-        subprocess.run(
-            f"wg set wg0 peer {public} allowed-ips {ip}/32",
-            shell=True,
-            check=True
-        )
+            # persist config safely
+            peer_block = f"""
+# USER:{user_id}
+[Peer]
+PublicKey = {public}
+AllowedIPs = {ip}/32
+"""
 
-        # сохраняем в конфиг
-        with open(WG_CONF, "a") as f:
-            f.write(
-                f"\n[Peer]\nPublicKey = {public}\nAllowedIPs = {ip}/32\n"
-            )
+            with open(WG_CONF, "a") as f:
+                f.write(peer_block)
 
-        # генерим клиентский конфиг
-        config = f"""[Interface]
+            # sync config (ВАЖНО)
+            sync_wg()
+
+            config = f"""[Interface]
 PrivateKey = {private}
 Address = {ip}/24
 DNS = 1.1.1.1
@@ -76,39 +97,17 @@ AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
 """
 
-        return jsonify({
-            "config": config,
-            "public_key": public
-        })
+            return jsonify({
+                "config": config,
+                "public_key": public,
+                "ip": ip
+            })
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
 
 # ---------------- DELETE ----------------
-def remove_from_conf(public_key):
-    with open(WG_CONF, "r") as f:
-        lines = f.readlines()
-
-    new_lines = []
-    skip = False
-
-    for line in lines:
-        if "PublicKey" in line and public_key in line:
-            skip = True
-            continue
-
-        if skip:
-            if line.strip() == "":
-                skip = False
-            continue
-
-        new_lines.append(line)
-
-    with open(WG_CONF, "w") as f:
-        f.writelines(new_lines)
-
-
 @app.route("/delete", methods=["POST"])
 def delete():
     if not check_key(request):
@@ -120,18 +119,40 @@ def delete():
     if not public_key:
         return jsonify({"error": "no key"}), 400
 
-    try:
-        subprocess.run(
-            ["wg", "set", "wg0", "peer", public_key, "remove"],
-            check=True
-        )
+    with lock:
+        try:
+            subprocess.run([
+                "wg", "set", "wg0",
+                "peer", public_key,
+                "remove"
+            ], check=True)
 
-        remove_from_conf(public_key)
+            # чистим конфиг
+            with open(WG_CONF, "r") as f:
+                lines = f.readlines()
 
-        return jsonify({"status": "ok"})
+            new = []
+            skip = False
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            for line in lines:
+                if public_key in line:
+                    skip = True
+                    continue
+                if skip and line.strip() == "":
+                    skip = False
+                    continue
+                if not skip:
+                    new.append(line)
+
+            with open(WG_CONF, "w") as f:
+                f.writelines(new)
+
+            sync_wg()
+
+            return jsonify({"status": "deleted"})
+
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
