@@ -187,14 +187,8 @@ async def ban_user(msg: types.Message):
     if msg.from_user.id != ADMIN_ID:
         return
 
-    parts = msg.text.split()
-
-    if len(parts) < 2:
-        await msg.answer("Используй: /ban user_id")
-        return
-
     try:
-        user_id = int(parts[1])
+        user_id = int(msg.text.split()[1])
 
         configs = get_user_configs(user_id)
 
@@ -203,24 +197,21 @@ async def ban_user(msg: types.Message):
             return
 
         deleted = 0
-        failed = 0
 
         for (public_key,) in configs:
             try:
                 delete_peer(public_key)
                 deleted += 1
             except Exception as e:
-                failed += 1
-                print(f"[BAN ERROR] {e}")
+                await msg.answer(f"Ошибка удаления:\n{e}")
+                return
 
-        # 🔥 ДЕАКТИВАЦИЯ ВСЕХ КОНФИГОВ
         deactivate_user(user_id)
 
         await msg.answer(
             f"⛔ Пользователь {user_id} отключён\n"
-            f"Удалено конфигов: {deleted}\n"
-            f"Ошибок удаления: {failed}"
+            f"Удалено конфигов: {deleted}"
         )
 
-    except ValueError:
-        await msg.answer("❌ user_id должен быть числом")
+    except:
+        await msg.answer("Используй: /ban user_id")
