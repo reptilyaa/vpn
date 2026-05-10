@@ -84,13 +84,16 @@ async def back(callback: types.CallbackQuery):
 
 
 # ---------------- VPN ----------------
+# ---------------- VPN ----------------
 @router.callback_query(F.data == "get_vpn")
 async def get_vpn(callback: types.CallbackQuery):
     user_id = callback.from_user.id
 
+    ADMIN_ID = 1027906192
+
     try:
-        # 🔐 проверка триала
-        if not is_active(user_id):
+        # 🔐 проверка триала (админ всегда проходит)
+        if user_id != ADMIN_ID and not is_active(user_id):
             await callback.message.answer("⛔ Ваш триал истёк")
             return
 
